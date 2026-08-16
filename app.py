@@ -36,6 +36,18 @@ def load_data():
     return df, scaler, model
 
 df, scaler, model = load_data()
+
+# AUTO-DETECT COLUMN NAMES
+possible_song_cols = ['track_name', 'name', 'track', 'Track Name', 'song']
+possible_artist_cols = ['artists', 'artist', 'Artists', 'Artist']
+
+song_col = next((col for col in possible_song_cols if col in df.columns), None)
+artist_col = next((col for col in possible_artist_cols if col in df.columns), None)
+
+if song_col is None:
+    st.error(f"Could not find song column. Your columns are: {list(df.columns)}")
+    st.stop()
+
 st.success('Models Loaded Successfully!')
 
 features = ['danceability', 'energy', 'key', 'loudness', 'mode',
@@ -45,16 +57,19 @@ features = ['danceability', 'energy', 'key', 'loudness', 'mode',
 st.title("🎵 Spotify Song Recommendation System")
 st.write("Select a song and get 10 similar songs based on audio features")
 
-song_list = df['track_name'].values
+song_list = df[song_col].dropna().unique()
 selected_song = st.selectbox("Type or select a song:", song_list)
 
 if st.button('Get Recommendations'):
     with st.spinner('Finding similar songs...'):
-        song_data = df[df['track_name'] == selected_song][features]
+        song_data = df[df[song_col] == selected_song][features]
         song_scaled = scaler.transform(song_data)
 
         distances, indices = model.kneighbors(song_scaled)
 
         st.subheader(f"Top 10 songs similar to '{selected_song}':")
         for i in indices[0][1:11]:
-            st.write(f"**{df['track_name'].iloc[i]}** - *{df['artists'].iloc[i]}*")
+            if artist_col:
+                st.write(f"**{df[song_col].iloc[i]}** - *{df[artist_col].iloc[i]}*")
+            else:
+                st.write(f"**{df[song_col].iloc[i]}**")
